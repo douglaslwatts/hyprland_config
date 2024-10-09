@@ -5,6 +5,8 @@
 # Date: 10/16/2022
 # File: random_background_image.sh
 #
+# TODO: adjust comments after transitioning this script from i3wm to hyprland
+#
 # Choose a random image from a given background images directory upon each i3 session. For use when
 # using i3wm as a DE.
 #

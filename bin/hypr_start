@@ -1,7 +1,6 @@
 #!/bin/bash
 
-#~/bin/set_hypr_monitor_config && \
-set_hypr_monitor_config \
+~/bin/set_hypr_monitor_config && \
     -l DP-1 -l 1920x1080@75 -l 0x0 -l 1 \
     -c DP-2 -c 1920x1080@75 -c 1920x0 -c 1 \
     -r HDMI-A-1 -r 1920x1080@75 -r 3840x0 -r 1 \
