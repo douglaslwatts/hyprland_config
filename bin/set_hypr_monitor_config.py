@@ -9,8 +9,6 @@ from pathlib import Path
 import shutil
 import re
 
-MAX_INDENT = 10
-
 arg_parser = argparse.ArgumentParser(
     description='''
 Edits the Hyprland configuration file to set up a monitor configuration based on what monitors are
@@ -201,6 +199,8 @@ for monitor_dir in monitor_dirs:
         elif BUILTIN_MONITOR_DIR_REGEX and BUILTIN_MONITOR_DIR_REGEX.match(monitor_dir):
             builtin_monitor_connected = monitor_status == CONNECTED_STATUS
 
+waybar_position = ''
+
 if left_monitor_connected and center_monitor_connected and right_monitor_connected:
 
     if verbose:
@@ -318,5 +318,7 @@ if verbose:
 
     for monitor_config in monitor_configs:
         print(monitor_config)
+
+    print(waybar_position)
 
 # TODO: Update the config files for the currently connected monitors
