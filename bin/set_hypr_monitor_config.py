@@ -68,6 +68,20 @@ arg_parser.add_argument(
     choices=['l', 'r']
 )
 
+arg_parser.add_argument(
+    '--verbose',
+    '-v',
+    help='Print output to the CLI verbosely',
+    action='store_true'
+)
+
+arg_parser.add_argument(
+    '--dry-run',
+    '-d',
+    help='Output new config file, but do not overwrite existing config',
+    action='store_true'
+)
+
 def validate_monitor_config_args(monitor_config_args: list) -> bool:
     valid = True
 
@@ -112,6 +126,8 @@ HYPR_CONFIG_TMP_FILE = '/tmp/hypr_config'
 
 WAYBAR_CONFIG_FILE = f'{HOME_DIR}/.config/waybar/config'
 WAYBAR_CONFIG_FILE_BAK = f'{HOME_DIR}/.config/waybar/config.bak'
+WAYBAR_OUTPUT_START = '    "output": ["'
+WAYBAR_OUTPUT_END = '", ],\n'
 
 RESOLUTION_REGEX = re.compile('^[0-9]{4}x[0-9]{3,4}$')
 REFRESH_RATE_REGEX = re.compile('^[0-9]{2,3}$')
@@ -123,18 +139,29 @@ STATUS_FILE = 'status'
 MONITOR_DIR_REGEX = re.compile(f'^{DRM_DIR}/card[0-9]-\\S+$')
 CONNECTED_STATUS = 'connected'
 
+POSITION_COORDINATE_INDEX = 3
+
+cli_args = arg_parser.parse_args()
+
 if not os.path.isfile(HYPR_CONFIG_FILE_BAK):
+    if cli_args.verbose:
+        print('No hyprland.conf.bak found, creating one...')
+
     shutil.copyfile(HYPR_CONFIG_FILE, HYPR_CONFIG_FILE_BAK)
 
 if not os.path.isfile(WAYBAR_CONFIG_FILE_BAK):
-    shutil.copyfile(WAYBAR_CONFIG_FILE, WAYBAR_CONFIG_FILE_BAK)
+    if cli_args.verbose:
+        print('No Waybar config.bak found, creating one...')
 
-cli_args = arg_parser.parse_args()
+    shutil.copyfile(WAYBAR_CONFIG_FILE, WAYBAR_CONFIG_FILE_BAK)
 
 left_monitor_configs = cli_args.left_monitor
 center_monitor_configs = cli_args.center_monitor
 right_monitor_configs = cli_args.right_monitor
 builtin_monitor_configs = cli_args.builtin_monitor
+secondary_monitor_left = cli_args.secondary_monitor == 'l'
+verbose = cli_args.verbose
+dry_run = cli_args.dry_run
 
 LEFT_MONITOR_DIR_REGEX = re.compile(f'^\\S+{left_monitor_configs[0]}$')\
     if left_monitor_configs else None
@@ -147,6 +174,105 @@ RIGHT_MONITOR_DIR_REGEX = re.compile(f'^\\S+{right_monitor_configs[0]}$')\
 
 BUILTIN_MONITOR_DIR_REGEX = re.compile(f'^\\S+{builtin_monitor_configs[0]}$')\
     if builtin_monitor_configs else None
+
+drm_path = Path(DRM_DIR)
+
+monitor_dirs = [
+    str(dir_name) for dir_name in drm_path.iterdir()
+    if dir_name.is_dir() and MONITOR_DIR_REGEX.match(str(dir_name))
+]
+
+left_monitor_connected = False
+center_monitor_connected = False
+right_monitor_connected = False
+builtin_monitor_connected = False
+
+for monitor_dir in monitor_dirs:
+
+    with open(f'{monitor_dir}/{STATUS_FILE}', 'r') as file:
+        monitor_status = file.read().strip()
+
+        if LEFT_MONITOR_DIR_REGEX and LEFT_MONITOR_DIR_REGEX.match(monitor_dir):
+            left_monitor_connected = monitor_status == CONNECTED_STATUS
+        elif CENTER_MONITOR_DIR_REGEX and CENTER_MONITOR_DIR_REGEX.match(monitor_dir):
+            center_monitor_connected = monitor_status == CONNECTED_STATUS
+        elif RIGHT_MONITOR_DIR_REGEX and RIGHT_MONITOR_DIR_REGEX.match(monitor_dir):
+            right_monitor_connected = monitor_status == CONNECTED_STATUS
+        elif BUILTIN_MONITOR_DIR_REGEX and BUILTIN_MONITOR_DIR_REGEX.match(monitor_dir):
+            builtin_monitor_connected = monitor_status == CONNECTED_STATUS
+
+if left_monitor_connected and center_monitor_connected and right_monitor_connected:
+
+    if verbose:
+        print('... all monitors connected')
+
+    waybar_position = f'{WAYBAR_OUTPUT_START}{center_monitor_configs[0]}{WAYBAR_OUTPUT_END}'
+elif not left_monitor_connected and center_monitor_connected and right_monitor_connected:
+
+    if verbose:
+        print('... left monitor not connected')
+
+    builtin_monitor_configs[POSITION_COORDINATE_INDEX] = right_monitor_configs[POSITION_COORDINATE_INDEX]
+    right_monitor_configs[POSITION_COORDINATE_INDEX] = center_monitor_configs[POSITION_COORDINATE_INDEX]
+    center_monitor_configs[POSITION_COORDINATE_INDEX] = left_monitor_configs[POSITION_COORDINATE_INDEX]
+
+    if secondary_monitor_left:
+        waybar_position = f'{WAYBAR_OUTPUT_START}{right_monitor_configs[0]}{WAYBAR_OUTPUT_END}'
+    else:
+        waybar_position = f'{WAYBAR_OUTPUT_START}{center_monitor_configs[0]}{WAYBAR_OUTPUT_END}'
+elif left_monitor_connected and not center_monitor_connected and right_monitor_connected:
+
+    if verbose:
+        print('... center monitor not connected')
+
+    builtin_monitor_configs[POSITION_COORDINATE_INDEX] = right_monitor_configs[POSITION_COORDINATE_INDEX]
+    right_monitor_configs[POSITION_COORDINATE_INDEX] = center_monitor_configs[POSITION_COORDINATE_INDEX]
+
+    if secondary_monitor_left:
+        waybar_position = f'{WAYBAR_OUTPUT_START}{right_monitor_configs[0]}{WAYBAR_OUTPUT_END}'
+    else:
+        waybar_position = f'{WAYBAR_OUTPUT_START}{left_monitor_configs[0]}{WAYBAR_OUTPUT_END}'
+elif left_monitor_connected and center_monitor_connected and not right_monitor_connected:
+
+    if verbose:
+        print('... right monitor not connected')
+
+    builtin_monitor_configs[POSITION_COORDINATE_INDEX] = right_monitor_configs[POSITION_COORDINATE_INDEX]
+
+    if secondary_monitor_left:
+        waybar_position = f'{WAYBAR_OUTPUT_START}{center_monitor_configs[0]}{WAYBAR_OUTPUT_END}'
+    else:
+        waybar_position = f'{WAYBAR_OUTPUT_START}{left_monitor_configs[0]}{WAYBAR_OUTPUT_END}'
+elif left_monitor_connected and not center_monitor_connected and not right_monitor_connected:
+
+    if verbose:
+        print('... center and right monitors not connected')
+
+    builtin_monitor_configs[POSITION_COORDINATE_INDEX] = center_monitor_configs[POSITION_COORDINATE_INDEX]
+    waybar_position = f'{WAYBAR_OUTPUT_START}{left_monitor_configs[0]}{WAYBAR_OUTPUT_END}'
+elif not left_monitor_connected and center_monitor_connected and not right_monitor_connected:
+
+    if verbose:
+        print('... left and right monitors not connected')
+
+    builtin_monitor_configs[POSITION_COORDINATE_INDEX] = center_monitor_configs[POSITION_COORDINATE_INDEX]
+    center_monitor_configs[POSITION_COORDINATE_INDEX] = left_monitor_configs[POSITION_COORDINATE_INDEX]
+    waybar_position = f'{WAYBAR_OUTPUT_START}{center_monitor_configs[0]}{WAYBAR_OUTPUT_END}'
+elif not left_monitor_connected and not center_monitor_connected and right_monitor_connected:
+
+    if verbose:
+        print('... left and center monitors not connected')
+
+    builtin_monitor_configs[POSITION_COORDINATE_INDEX] = center_monitor_configs[POSITION_COORDINATE_INDEX]
+    right_monitor_configs[POSITION_COORDINATE_INDEX] = left_monitor_configs[POSITION_COORDINATE_INDEX]
+    waybar_position = f'{WAYBAR_OUTPUT_START}{right_monitor_configs[0]}{WAYBAR_OUTPUT_END}'
+elif not left_monitor_connected and not center_monitor_connected and not right_monitor_connected:
+
+    if verbose:
+        print('... No external monitors are connected')
+
+    builtin_monitor_configs[POSITION_COORDINATE_INDEX] = left_monitor_configs[POSITION_COORDINATE_INDEX]
+    waybar_position = f'{WAYBAR_OUTPUT_START}{builtin_monitor_configs[0]}{WAYBAR_OUTPUT_END}'
 
 left_monitor = ''
 center_monitor = ''
@@ -181,32 +307,16 @@ if builtin_monitor_configs:
     builtin_monitor = (f'monitor = {builtin_monitor_configs[0]}, {builtin_monitor_configs[1]}'
                        f'@{builtin_monitor_configs[2]}, {builtin_monitor_configs[3]}, {builtin_monitor_configs[4]}')
 
-drm_path = Path(DRM_DIR)
-
-monitor_dirs = [
-    str(dir_name) for dir_name in drm_path.iterdir()
-    if dir_name.is_dir() and MONITOR_DIR_REGEX.match(str(dir_name))
+monitor_configs = [
+    left_monitor,
+    center_monitor,
+    right_monitor,
+    builtin_monitor
 ]
 
-left_monitor_connected = False
-center_monitor_connected = False
-right_monitor_connected = False
-builtin_monitor_connected = False
+if verbose:
 
-for monitor_dir in monitor_dirs:
+    for monitor_config in monitor_configs:
+        print(monitor_config)
 
-    with open(f'{monitor_dir}/{STATUS_FILE}', 'r') as file:
-        monitor_status = file.read().strip()
-
-        if LEFT_MONITOR_DIR_REGEX and LEFT_MONITOR_DIR_REGEX.match(monitor_dir):
-            left_monitor_connected = monitor_status == CONNECTED_STATUS
-        elif CENTER_MONITOR_DIR_REGEX and CENTER_MONITOR_DIR_REGEX.match(monitor_dir):
-            center_monitor_connected = monitor_status == CONNECTED_STATUS
-        elif RIGHT_MONITOR_DIR_REGEX and RIGHT_MONITOR_DIR_REGEX.match(monitor_dir):
-            right_monitor_connected = monitor_status == CONNECTED_STATUS
-        elif BUILTIN_MONITOR_DIR_REGEX and BUILTIN_MONITOR_DIR_REGEX.match(monitor_dir):
-            builtin_monitor_connected = monitor_status == CONNECTED_STATUS
-
-print(f'{left_monitor} -> {left_monitor_connected}\n{center_monitor} -> '
-      f'{center_monitor_connected}\n{right_monitor} -> {right_monitor_connected}\n'
-      f'{builtin_monitor} -> {builtin_monitor_connected}')
+# TODO: Update the config files for the currently connected monitors
