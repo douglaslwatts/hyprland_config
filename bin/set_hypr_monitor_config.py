@@ -167,6 +167,8 @@ secondary_monitor_left = cli_args.secondary_monitor == 'l'
 verbose = cli_args.verbose
 dry_run = cli_args.dry_run
 
+###### Gather and setup configs based on the status of connected and disconnected monitor(s) #######
+
 # Get monitor connection statuses
 
 BUILTIN_MONITOR_DIR_REGEX = re.compile(f'^\\S+{builtin_monitor_configs[0]}$') \
@@ -200,8 +202,9 @@ for monitor_dir in monitor_dirs:
     with open(f'{monitor_dir}/{STATUS_FILE}', 'r') as file:
         monitor_status = file.read().strip()
 
-        # NOTE: Often a laptop builtin monitor name will be a superset of another monitor name,
-        #       so checking it first here to avoid a false match.
+        # NOTE: Often, the name assigned to the laptop's builtin monitor will be a superset of one
+        #       or more of the names assigned to external monitors, so checking it first here to
+        #       avoid a false match.
 
         if BUILTIN_MONITOR_DIR_REGEX and BUILTIN_MONITOR_DIR_REGEX.match(monitor_dir):
             builtin_monitor_connected = monitor_status == CONNECTED_STATUS
@@ -342,6 +345,12 @@ if verbose:
 
     print(waybar_position)
 
+############################### End gather and setup configs #######################################
+
+#################### Write configs to file, or if dry_run, send them to stdout #####################
+
+# Waybar
+
 with open(WAYBAR_CONFIG_FILE, 'r') as waybar_config_file,\
         open(WAYBAR_CONFIG_TMP_FILE, 'w') as waybar_config_tmp_file:
     for line in waybar_config_file:
@@ -356,4 +365,10 @@ if dry_run:
 else:
     shutil.move(WAYBAR_CONFIG_TMP_FILE, WAYBAR_CONFIG_FILE)
 
-# TODO: Update the hypr config file with the currently connected monitors
+# TODO: Write configs for Hyprland based on the currently connected monitors to file
+
+# Hyprland
+
+with open(HYPR_CONFIG_FILE, 'r') as hypr_config_file,\
+        open(HYPR_CONFIG_TMP_FILE,'w') as hypr_config_tmp_file:
+    print('TODO: Write configs for Hyprland based on the currently connected monitors to file')
