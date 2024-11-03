@@ -208,25 +208,21 @@ for monitor_dir in monitor_dirs:
 
             if builtin_monitor_connected:
                 connected_monitor_names.append(builtin_monitor_configs[0])
-            print(f'builtin: {monitor_dir} => {monitor_status}')
         elif LEFT_MONITOR_DIR_REGEX and LEFT_MONITOR_DIR_REGEX.match(monitor_dir):
             left_monitor_connected = monitor_status == CONNECTED_STATUS
 
             if left_monitor_connected:
                 connected_monitor_names.append(left_monitor_configs[0])
-            print(f'left: {monitor_dir} => {monitor_status}')
         elif CENTER_MONITOR_DIR_REGEX and CENTER_MONITOR_DIR_REGEX.match(monitor_dir):
             center_monitor_connected = monitor_status == CONNECTED_STATUS
 
             if center_monitor_connected:
                 connected_monitor_names.append(center_monitor_configs[0])
-            print(f'center: {monitor_dir} => {monitor_status}')
         elif RIGHT_MONITOR_DIR_REGEX and RIGHT_MONITOR_DIR_REGEX.match(monitor_dir):
             right_monitor_connected = monitor_status == CONNECTED_STATUS
 
             if right_monitor_connected:
                 connected_monitor_names.append(right_monitor_configs[0])
-            print(f'right: {monitor_dir} => {monitor_status}')
 
 if verbose:
     print(f'Connected monitor names => {connected_monitor_names}')
