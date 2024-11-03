@@ -24,6 +24,8 @@ side-by-side external monitors and a builtin laptop monitor.
 [--center-monitor <name> <resolution> <refresh-rate> <starting-coordinate> <scale>]
 [--right-monitor <name> <resolution> <refresh-rate> <starting-coordinate> <scale>]
 [--builtin-monitor <name> <resolution> <refresh-rate> <starting-coordinate> <scale>]
+[--dry-run]
+[--verbose]
 --secondary-monitor <l|r>
 
 For help with these values, see https://wiki.hyprland.org/configuring/monitors/
@@ -124,8 +126,10 @@ HYPR_CONFIG_TMP_FILE = '/tmp/hypr_config'
 
 WAYBAR_CONFIG_FILE = f'{HOME_DIR}/.config/waybar/config'
 WAYBAR_CONFIG_FILE_BAK = f'{HOME_DIR}/.config/waybar/config.bak'
+WAYBAR_CONFIG_TMP_FILE = '/tmp/waybar_config'
 WAYBAR_OUTPUT_START = '    "output": ["'
 WAYBAR_OUTPUT_END = '", ],\n'
+WAYBAR_POSITION_REGEX = re.compile('^\\s*"output":\\s*\\[\\S+\\s*],\\s*$')
 
 RESOLUTION_REGEX = re.compile('^[0-9]{4}x[0-9]{3,4}$')
 REFRESH_RATE_REGEX = re.compile('^[0-9]{2,3}$')
@@ -140,6 +144,8 @@ CONNECTED_STATUS = 'connected'
 POSITION_COORDINATE_INDEX = 3
 
 cli_args = arg_parser.parse_args()
+
+# If no Hyprland and/or Waybar config backup exists, make them
 
 if not os.path.isfile(HYPR_CONFIG_FILE_BAK):
     if cli_args.verbose:
@@ -161,6 +167,11 @@ secondary_monitor_left = cli_args.secondary_monitor == 'l'
 verbose = cli_args.verbose
 dry_run = cli_args.dry_run
 
+# Get monitor connection statuses
+
+BUILTIN_MONITOR_DIR_REGEX = re.compile(f'^\\S+{builtin_monitor_configs[0]}$') \
+    if builtin_monitor_configs else None
+
 LEFT_MONITOR_DIR_REGEX = re.compile(f'^\\S+{left_monitor_configs[0]}$')\
     if left_monitor_configs else None
 
@@ -169,9 +180,6 @@ CENTER_MONITOR_DIR_REGEX = re.compile(f'^\\S+{center_monitor_configs[0]}$')\
 
 RIGHT_MONITOR_DIR_REGEX = re.compile(f'^\\S+{right_monitor_configs[0]}$')\
     if right_monitor_configs else None
-
-BUILTIN_MONITOR_DIR_REGEX = re.compile(f'^\\S+{builtin_monitor_configs[0]}$')\
-    if builtin_monitor_configs else None
 
 drm_path = Path(DRM_DIR)
 
@@ -185,19 +193,46 @@ center_monitor_connected = False
 right_monitor_connected = False
 builtin_monitor_connected = False
 
+connected_monitor_names = []
+
 for monitor_dir in monitor_dirs:
 
     with open(f'{monitor_dir}/{STATUS_FILE}', 'r') as file:
         monitor_status = file.read().strip()
 
-        if LEFT_MONITOR_DIR_REGEX and LEFT_MONITOR_DIR_REGEX.match(monitor_dir):
+        # NOTE: Often a laptop builtin monitor name will be a superset of another monitor name,
+        #       so checking it first here to avoid a false match.
+
+        if BUILTIN_MONITOR_DIR_REGEX and BUILTIN_MONITOR_DIR_REGEX.match(monitor_dir):
+            builtin_monitor_connected = monitor_status == CONNECTED_STATUS
+
+            if builtin_monitor_connected:
+                connected_monitor_names.append(builtin_monitor_configs[0])
+            print(f'builtin: {monitor_dir} => {monitor_status}')
+        elif LEFT_MONITOR_DIR_REGEX and LEFT_MONITOR_DIR_REGEX.match(monitor_dir):
             left_monitor_connected = monitor_status == CONNECTED_STATUS
+
+            if left_monitor_connected:
+                connected_monitor_names.append(left_monitor_configs[0])
+            print(f'left: {monitor_dir} => {monitor_status}')
         elif CENTER_MONITOR_DIR_REGEX and CENTER_MONITOR_DIR_REGEX.match(monitor_dir):
             center_monitor_connected = monitor_status == CONNECTED_STATUS
+
+            if center_monitor_connected:
+                connected_monitor_names.append(center_monitor_configs[0])
+            print(f'center: {monitor_dir} => {monitor_status}')
         elif RIGHT_MONITOR_DIR_REGEX and RIGHT_MONITOR_DIR_REGEX.match(monitor_dir):
             right_monitor_connected = monitor_status == CONNECTED_STATUS
-        elif BUILTIN_MONITOR_DIR_REGEX and BUILTIN_MONITOR_DIR_REGEX.match(monitor_dir):
-            builtin_monitor_connected = monitor_status == CONNECTED_STATUS
+
+            if right_monitor_connected:
+                connected_monitor_names.append(right_monitor_configs[0])
+            print(f'right: {monitor_dir} => {monitor_status}')
+
+if verbose:
+    print(f'Connected monitor names => {connected_monitor_names}')
+
+# Alter monitors' start position coordinates with respect to which monitors are actually
+# connected, and set up config file line for specifying which monitor the Waybar should display on.
 
 waybar_position = ''
 
@@ -274,51 +309,55 @@ elif not left_monitor_connected and not center_monitor_connected and not right_m
     builtin_monitor_configs[POSITION_COORDINATE_INDEX] = left_monitor_configs[POSITION_COORDINATE_INDEX]
     waybar_position = f'{WAYBAR_OUTPUT_START}{builtin_monitor_configs[0]}{WAYBAR_OUTPUT_END}'
 
+# Validate args for, and set monitor configuration file lines
+
 left_monitor = ''
 center_monitor = ''
 right_monitor = ''
 builtin_monitor = ''
 
-if left_monitor_configs:
-    if not validate_monitor_config_args(left_monitor_configs):
-        exit(1)
-
-    left_monitor = (f'monitor = {left_monitor_configs[0]}, {left_monitor_configs[1]}'
-                    f'@{left_monitor_configs[2]}, {left_monitor_configs[3]}, {left_monitor_configs[4]}')
-
-if center_monitor_configs:
-    if not validate_monitor_config_args(center_monitor_configs):
-        exit(1)
-
-    center_monitor = (f'monitor = {center_monitor_configs[0]}, {center_monitor_configs[1]}'
-                      f'@{center_monitor_configs[2]}, {center_monitor_configs[3]}, {center_monitor_configs[4]}')
-
-if right_monitor_configs:
-    if not validate_monitor_config_args(right_monitor_configs):
-        exit(1)
-
-    right_monitor = (f'monitor = {right_monitor_configs[0]}, {right_monitor_configs[1]}'
-                     f'@{right_monitor_configs[2]}, {right_monitor_configs[3]}, {right_monitor_configs[4]}')
-
-if builtin_monitor_configs:
-    if not validate_monitor_config_args(builtin_monitor_configs):
-        exit(1)
-
-    builtin_monitor = (f'monitor = {builtin_monitor_configs[0]}, {builtin_monitor_configs[1]}'
-                       f'@{builtin_monitor_configs[2]}, {builtin_monitor_configs[3]}, {builtin_monitor_configs[4]}')
-
 monitor_configs = [
-    left_monitor,
-    center_monitor,
-    right_monitor,
-    builtin_monitor
+    left_monitor_configs,
+    center_monitor_configs,
+    right_monitor_configs,
+    builtin_monitor_configs
 ]
+
+monitor_config_lines = []
+
+for config in monitor_configs:
+    if config:
+        if not validate_monitor_config_args(config):
+            exit(1)
+
+    if config[0] in connected_monitor_names:
+        monitor_config_lines.append(
+            f'monitor = {config[0]}, {config[1]}@{config[2]}, {config[3]}, {config[4]}\n'
+        )
+    else:
+        monitor_config_lines.append(
+            f'#monitor = {config[0]}, {config[1]}@{config[2]}, {config[3]}, {config[4]}\n'
+        )
 
 if verbose:
 
-    for monitor_config in monitor_configs:
+    for monitor_config in monitor_config_lines:
         print(monitor_config)
 
     print(waybar_position)
 
-# TODO: Update the config files for the currently connected monitors
+with open(WAYBAR_CONFIG_FILE, 'r') as waybar_config_file,\
+        open(WAYBAR_CONFIG_TMP_FILE, 'w') as waybar_config_tmp_file:
+    for line in waybar_config_file:
+        if WAYBAR_POSITION_REGEX.match(line):
+            waybar_config_tmp_file.write(re.sub(WAYBAR_POSITION_REGEX, waybar_position, line))
+        else:
+            waybar_config_tmp_file.write(line)
+
+if dry_run:
+    with open(WAYBAR_CONFIG_TMP_FILE, 'r') as waybar_config_tmp_file:
+        print(waybar_config_tmp_file.read())
+else:
+    shutil.move(WAYBAR_CONFIG_TMP_FILE, WAYBAR_CONFIG_FILE)
+
+# TODO: Update the hypr config file with the currently connected monitors
