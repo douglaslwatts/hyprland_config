@@ -2,26 +2,18 @@
 #
 # Author: Douglas L. Watts
 # Version: 1.0
-# Date: 10/16/2022
+# Date: 12/21/2024
 # File: random_background_image.sh
 #
-# Choose a random image from a given background images directory upon each i3 session. For use when
-# using i3wm as a DE.
+# Choose a random image from a given background images directory upon each hyprland session. For use when
+# using Hyprland as a DE.
 #
-# NOTE: The script assumes you have a feh command in i3 config file as below:
+# NOTE: The script assumes you have a swww command in Hyprland config file as below:
 #
-#       exec --no-startup-id feh --bg-scale /path/to/image_file
+#       exec-once = swww img /path/to/image_file
 #       
 #       and that the file specified in that command exists. If that is not the case make it so or 
-#       change the value of the variable FEH_COMMAND in this script
-#
-# Example:
-#
-#   Place below in .bash_profile or .profile, whichever is relavent to you
-#
-#       if [ "${XDG_CURRENT_DESKTOP}" = "i3" ]; then
-#           ${HOME}/bin/random_background_image.sh -d Pictures/background_images &
-#       fi
+#       change the value of the variable SWWW_COMMAND in this script
 #
  
 # Prints a usage message and exits
