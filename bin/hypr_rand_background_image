@@ -103,11 +103,11 @@ fi
 readonly BACKGROUND_IMAGES_ARRAY=(${BACKGROUNDS_DIR}/*)
 readonly NUM_IMAGES="${#BACKGROUND_IMAGES_ARRAY[@]}"
 readonly RANDOM_INDEX=$(( $RANDOM % $NUM_IMAGES ))
-readonly DEFAULT_FILE_NAME="$(grep 'swaybg' $HYPR_CONFIG_FILE | cut -d' ' -f9)"
+readonly DEFAULT_FILE_NAME="$(grep 'swww img' $HYPR_CONFIG_FILE | cut -d' ' -f5)"
 readonly FILE_NAME="$(get_random_image $BACKGROUNDS_DIR $RANDOM_INDEX $DEFAULT_FILE_NAME)"
-readonly SWAYBG_COMMAND="exec-once = swaybg -m 'fill' -o '\*' -i"
+readonly SWWW_COMMAND="exec-once = swww img"
 
-sed -i "s:\(${SWAYBG_COMMAND}\) .*:\1 ${FILE_NAME}:" $HYPR_CONFIG_FILE
+sed -i "s:\(${SWWW_COMMAND}\) .*:\1 ${FILE_NAME}:" $HYPR_CONFIG_FILE
 
 exit 0
 

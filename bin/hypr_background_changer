@@ -146,7 +146,7 @@ fi
 
 # get the current background image file absolute path from the hyprland config file
 
-readonly DEFAULT_FILE_NAME="$(grep 'swaybg' $HYPR_CONFIG_FILE | cut -d' ' -f9)"
+readonly DEFAULT_FILE_NAME="$(grep 'swww img' $HYPR_CONFIG_FILE | cut -d' ' -f5)"
 old_file_name="$DEFAULT_FILE_NAME"
 
 # a variable to hold the previouse index in the file image array, as not to choose the same

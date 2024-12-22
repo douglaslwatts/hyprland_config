@@ -1,6 +1,6 @@
 #!/bin/bash
 
-entries="🗝 Lock\n⇠ Logout\n⭮ Reboot\n⏻ Shutdown\n⏾ Suspend"
+entries="🗝 Lock\n⇠ Logout\n⭮ Reboot\n⏻ Poweroff\n⏾ Suspend"
 
 selected=$(echo -e $entries | wofi --width 250 --height 210 --gtk-dark --dmenu --cache-file /dev/null | awk '{print tolower($2)}')
 
@@ -15,7 +15,7 @@ case $selected in
     systemctl reboot;;
   suspend)
     $LOCKER && systemctl suspend;;
-  shutdown)
-    systemctl poweroff;;
+  poweroff)
+    systemctl poweroff -i;;
 esac
 
