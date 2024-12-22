@@ -3,6 +3,9 @@
 while [[ true ]]; do
     sleep 2m
 
+    #is_charging="$(/usr/bin/acpi -b | /usr/bin/awk -F' ' '{if (NR == 1) {print $6}}')"
+    #is_full_batt="$(/usr/bin/acpi -b | /usr/bin/awk -F' ' '{if (NR == 1) {print $3}}')"
+
     is_charging="$(/usr/bin/acpi -b | grep -io ' charging')"
     is_full_batt="$(/usr/bin/acpi -b | grep -io ' full')"
 
@@ -16,6 +19,7 @@ while [[ true ]]; do
             if [[ ! -f /tmp/lock_screen.png ]]; then
                 /usr/bin/grim /tmp/lock_screen.png
                 /usr/bin/convert -blur 0x15 /tmp/lock_screen.png /tmp/lock_screen.png
+                #/usr/bin/convert /tmp/lock_screen.png ~/Pictures/archlinux-logo.png -gravity center -composite -matte /tmp/lock_screen.png
             fi
 
             sleep 30s

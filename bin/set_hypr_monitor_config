@@ -1,15 +1,8 @@
 #!/bin/bash
 
-# Set the monitor layout based on which monitors are connected when using hyprland as DE. call this
-# prior to calling the Hyprland command. For example:
+# Set the monitor layout based on which monitors are connected when using hyprland as DE. call this prior to calling the Hyprland command. For example:
 #
 #                           $HOME/bin/set_hypr_monitor_config && Hyprland
-#
-# NOTE: This script is currently taking args for the monitor modes. It would be nice to find a way
-#       to read them from someplace like /sys/class/drm/ instead, so it can be more dynamic and choose
-#       the best available mode and refresh rate automatically. I see that the available modes can
-#       be read from /sys/class/drm/card[x-monitor-name]/modes, but I have not found a way to read
-#       the available refresh rates for those modes yet. This setup has a lot of room for improvements.
 
 # Prints a usage message and exits
 usage() {

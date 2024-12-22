@@ -7,6 +7,8 @@ BEGIN {
 
     builtin_monitor_config = "monitor = "builtin_monitor", "builtin_monitor_res_rate", "builtin_monitor_placement", "builtin_monitor_scaling;
 
+    builtin_monitor_off = "monitor = "builtin_monitor", disable";
+
     left_monitor_connected = match(left_monitor_status, "^connected$");
     center_monitor_connected = match(center_monitor_status, "^connected$");
     right_monitor_connected = match(right_monitor_status, "^connected$");
@@ -37,7 +39,11 @@ BEGIN {
             printf "#%s\n", right_monitor_config;
         }
     } else if (match($0, "^(#)?monitor = "builtin_monitor".*$")) {
-        printf "%s\n", builtin_monitor_config;
+        if (left_monitor_connected || center_monitor_connected || right_monitor_connected) {
+            printf "%s\n", builtin_monitor_off;
+        } else {
+            printf "%s\n", builtin_monitor_config;
+        }
     } else if (match($0, "^workspace = [1-5],.*$")) {
 
         if (three_monitors_connected ||
@@ -136,7 +142,7 @@ BEGIN {
             printf "%s %s %s %s %s\n", $1, $2, $3, workspace_defaults, "monitor:"builtin_monitor", default:false";
         }
     } else if (match($0, "^workspace = 11,.*$")) {
-        if (!left_monitor_connected && ! center_monitor_connected && !right_monitor_connected) {
+        if (!left_monitor_connected && !center_monitor_connected && !right_monitor_connected) {
             printf "%s %s %s %s %s %s\n", $1, $2, $3, workspace_defaults, $7, "default:false";
         } else {
             printf "%s %s %s %s %s %s\n", $1, $2, $3, workspace_defaults, $7, "default:true";
